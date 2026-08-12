@@ -44,7 +44,7 @@
     height:100%;
     object-fit:cover; /* matches the tile's own aspect ratio, so nothing gets cropped */
     opacity:0;
-    transition: opacity 1400ms ease;
+    transition: opacity 2000ms ease;
   }
 
   .mag-tile img.mag-visible{
@@ -72,33 +72,72 @@
 (function(){
 
   // ---------------------------------------------------------------
-  // 1. EDIT THIS LIST: add all your magazine page filenames here.
-  //    Since your jpgs live in a folder named "images" on GitHub,
-  //    right next to this html file, "images/yourfile.jpg" is all
-  //    you need. The more you add, the more variety each tile
-  //    cycles through.
+  // 1. Your jpgs are named page01.jpg, page02.jpg, page03.jpg, etc.
+  //    Set MAX_PAGES to a number at least as high as your total
+  //    page count (it's fine to overshoot — anything that doesn't
+  //    exist is just skipped automatically, no errors).
   // ---------------------------------------------------------------
-  const pages = [
-    "images/page01.jpg",
-    "images/page02.jpg",
-    "images/page03.jpg",
-    "images/page04.jpg",
-    "images/page05.jpg",
-    "images/page06.jpg",
-    "images/page07.jpg",
-    "images/page08.jpg",
-    "images/page09.jpg",
-    "images/page10.jpg",
-    "images/page11.jpg",
-    "images/page12.jpg"
-  ];
+  const IMAGES_FOLDER = "images";
+  const MAX_PAGES = 40;   // counts page01.jpg ... page40.jpg and keeps whichever exist
 
   const TILE_COUNT = 10;        // how many letter-sized boxes to show (5 per row on desktop, 3 per row on mobile — rows wrap automatically)
-  const BASE_INTERVAL = 3800;   // baseline ms between changes (same pace as before)
-  const JITTER = 1600;          // +/- randomness so tiles don't sync up
+  const BASE_INTERVAL = 7000;   // baseline ms between changes — slower, calmer pace
+  const JITTER = 3000;          // +/- randomness so tiles don't sync up
 
   const grid = document.getElementById('magGrid');
-  if (pages.length === 0) return;
+
+  function buildCandidateList(){
+    const list = [];
+    for (let i = 1; i <= MAX_PAGES; i++){
+      const num = String(i).padStart(2, '0');
+      list.push(`${IMAGES_FOLDER}/page${num}.jpg`);
+    }
+    return list;
+  }
+
+  // quietly checks each candidate filename and keeps only the ones
+  // that actually exist, so you never get broken-image icons
+  function checkImageExists(src){
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve(src);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+  }
+
+  async function discoverImages(){
+    const candidates = buildCandidateList();
+    const results = await Promise.all(candidates.map(checkImageExists));
+    return results.filter(Boolean);
+  }
+
+  discoverImages().then(pages => {
+    if (pages.length === 0) return;
+    startShowcase(pages);
+  });
+
+  function startShowcase(pages){
+
+  // tracks which pages[] index each tile is currently displaying,
+  // so we can avoid ever showing the same image in two boxes at once
+  const shownIndices = new Array(TILE_COUNT).fill(-1);
+
+  function pickNextIndex(tileNum, currentIndex){
+    const taken = new Set(shownIndices);
+    let candidates = pages
+      .map((_, i) => i)
+      .filter(i => i !== currentIndex && !taken.has(i));
+
+    // pool exhausted (e.g. fewer images than tiles) — fall back to
+    // anything that's just not this tile's own current image
+    if (candidates.length === 0){
+      candidates = pages.map((_, i) => i).filter(i => i !== currentIndex);
+    }
+    if (candidates.length === 0) return currentIndex; // only one image total
+
+    return candidates[Math.floor(Math.random() * candidates.length)];
+  }
 
   for (let t = 0; t < TILE_COUNT; t++){
     const tile = document.createElement('div');
@@ -107,8 +146,10 @@
     const imgA = document.createElement('img');
     const imgB = document.createElement('img');
 
-    // stagger the starting image so every tile shows something different
-    let index = t % pages.length;
+    // stagger the starting image so every visible tile is unique
+    let index = pickNextIndex(t, -1);
+    shownIndices[t] = index;
+
     imgA.src = pages[index];
     imgA.alt = 'Magazine page';
     imgA.classList.add('mag-visible');
@@ -122,7 +163,9 @@
     let showingA = true;
 
     function tick(){
-      index = (index + 1) % pages.length;
+      index = pickNextIndex(t, index);
+      shownIndices[t] = index;
+
       const nextImg = showingA ? imgB : imgA;
       const currImg = showingA ? imgA : imgB;
 
@@ -141,9 +184,11 @@
     }
 
     // stagger each tile's first change so they don't all fire together
-    const initialDelay = BASE_INTERVAL + (t * 400) + (Math.random() * JITTER);
+    const initialDelay = BASE_INTERVAL + (t * 600) + (Math.random() * JITTER);
     setTimeout(tick, initialDelay);
   }
+
+  } // end startShowcase
 
 })();
 </script>
