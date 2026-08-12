@@ -1,292 +1,151 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Indiefferential Email Generator</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Magazine Showcase</title>
 <style>
-    * {
-        box-sizing: border-box;
-    }
+  :root{
+    --paper:#ffffff;
+    --ink:#1a1a1a;
+    --grout:#f0efe9;
+  }
+  * { box-sizing: border-box; }
 
-    body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
-        background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-    }
+  #mag-showcase{
+    background:var(--paper);
+    width:100%;
+    max-width:1100px;
+    margin:0 auto;
+    padding:8px;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    color:var(--ink);
+  }
 
-    .container {
-        background: #ffffff;
-        width: 100%;
-        max-width: 900px;
-        border-radius: 18px;
-        padding: 28px;
-        box-shadow: 0 25px 60px rgba(0,0,0,0.25);
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
+  .mag-grid{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap:10px;
+    width:100%;
+  }
 
-    h2 {
-        margin: 0;
-        font-size: 22px;
-        font-weight: 600;
-        color: #111;
-        text-align: center;
-        letter-spacing: 0.2px;
-    }
+  .mag-tile{
+    position:relative;
+    overflow:hidden;
+    background:#fafafa;
+    aspect-ratio: 8.5 / 11; /* true US Letter proportions, so pages show uncropped */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
 
-    textarea {
-        width: 100%;
-        height: 420px;
-        resize: none;
-        padding: 18px;
-        border-radius: 12px;
-        border: 1px solid #ddd;
-        font-size: 14.5px;
-        line-height: 1.7;
-        color: #222;
-        background: #fafafa;
-        outline: none;
-    }
+  .mag-tile img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover; /* matches the tile's own aspect ratio, so nothing gets cropped */
+    opacity:0;
+    transition: opacity 1400ms ease;
+  }
 
-    textarea:focus {
-        border-color: #000;
-        background: #fff;
-    }
+  .mag-tile img.mag-visible{
+    opacity:1;
+  }
 
-    .actions {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
+  @media (max-width: 720px){
+    .mag-grid{
+      grid-template-columns: repeat(3, 1fr);
     }
+  }
 
-    button {
-        background: #000;
-        color: #fff;
-        border: none;
-        border-radius: 999px;
-        padding: 14px 28px;
-        font-size: 15px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-    }
-
-    button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 14px 30px rgba(0,0,0,0.3);
-        opacity: 0.95;
-    }
-
-    button:active {
-        transform: translateY(0);
-        box-shadow: 0 8px 18px rgba(0,0,0,0.25);
-    }
-
-    .copied {
-        font-size: 13px;
-        color: #1a7f37;
-        font-weight: 500;
-        opacity: 0;
-        transition: opacity 0.25s ease;
-    }
-
-    .copied.show {
-        opacity: 1;
-    }
-
-    @media (max-width: 600px) {
-        textarea {
-            height: 360px;
-        }
-    }
+  @media (prefers-reduced-motion: reduce){
+    .mag-tile img{ transition:none; }
+  }
 </style>
 </head>
-
 <body>
 
-<div class="container">
-    <h2>Email Text Generator</h2>
-
-    <textarea id="output" placeholder="Click “Generate & Copy” to create your email…"></textarea>
-
-    <div class="actions">
-        <button onclick="generateText()">Generate & Copy</button>
-        <div class="copied" id="copiedMsg">✔ Copied to clipboard</div>
-    </div>
+<div id="mag-showcase">
+  <div class="mag-grid" id="magGrid"></div>
 </div>
 
 <script>
-const compliments = [
-    "We loved your new track — it carries a vibrant energy and a strong emotional pull that immediately stands out. The arrangement feels polished and intentional, allowing each moment to breathe naturally.",
-    "Your latest release truly impressed us. It’s rich in atmosphere, emotionally engaging, and beautifully structured from start to finish.",
-    "We were genuinely drawn to your new track. The sound feels fresh and dynamic, with an elegant flow that keeps the listener engaged throughout.",
-    "Your new release stood out to us for its depth and character. The production is refined, and the transitions feel seamless and natural.",
-    "We really enjoyed your new track — it’s full of life, detail, and creative intention. Every element feels thoughtfully placed.",
-    "Your latest song caught our attention immediately. It balances emotion and energy perfectly, creating a smooth and immersive listening experience.",
-    "We were impressed by your new track’s vibrant tone and refined structure. It unfolds naturally, keeping the listener locked in from beginning to end.",
-    "Your new release showcases a strong artistic vision. The composition flows effortlessly while maintaining a captivating atmosphere.",
-    "We loved how your new track blends emotion with precision. The arrangement feels cohesive and confident throughout.",
-    "Your latest release resonated with us. It’s expressive, well-crafted, and flows with a sense of purpose and clarity.",
-    "We really connected with your new track — it feels expressive, confident, and carefully crafted from start to finish.",
-"Your latest release stood out to us for its strong atmosphere and thoughtful musical direction.",
-"We enjoyed how your new track unfolds naturally, with each section complementing the next.",
-"Your new song immediately caught our attention with its engaging energy and polished sound.",
-"We were drawn to the emotional depth of your latest release and its seamless progression.",
-"Your new track showcases a refined balance between creativity and clarity.",
-"We loved the way your latest release maintains momentum while allowing space for emotion.",
-"Your new song feels immersive and intentional, with a structure that keeps the listener engaged.",
-"We were impressed by the cohesion and flow throughout your latest track.",
-"Your new release carries a strong sense of identity and artistic focus.",
-"We really appreciated the detail and care that went into your new track.",
-"Your latest song stands out for its smooth transitions and confident arrangement.",
-"We enjoyed the emotional pull of your new release and its well-paced structure.",
-"Your new track feels polished while still retaining a genuine, organic character.",
-"We were captivated by the atmosphere and flow of your latest song.",
-"Your new release highlights a clear artistic vision and thoughtful production choices.",
-"We found your new track engaging from the very first moment.",
-"Your latest song delivers a strong mood and a cohesive listening experience.",
-"We were drawn to the balance of energy and restraint in your new release.",
-"Your new track feels both expressive and well-structured throughout.",
-"We loved the sense of movement and progression in your latest release.",
-"Your new song carries a compelling energy that keeps the listener involved.",
-"We appreciated how naturally your new track develops over time.",
-"Your latest release demonstrates confidence in both sound and arrangement.",
-"We were impressed by the clarity and flow of your new song.",
-"Your new track immediately stood out for its refined tone and smooth delivery.",
-"We enjoyed the way your latest release builds and resolves with intention.",
-"Your new song feels dynamic while remaining cohesive and controlled.",
-"We were struck by the emotional consistency throughout your latest track.",
-"Your new release maintains a strong presence from beginning to end.",
-"We loved how your new track balances atmosphere and momentum.",
-"Your latest song feels purposeful, polished, and engaging throughout.",
-"We were drawn to the natural pacing and structure of your new release.",
-"Your new track delivers a confident and immersive listening experience.",
-"We appreciated the thoughtful arrangement and smooth transitions in your latest song.",
-"Your new release stands out for its clarity and artistic direction.",
-"We found your new track both engaging and emotionally resonant.",
-"Your latest song showcases a strong sense of flow and musical intent.",
-"We were impressed by how cohesive and refined your new release feels.",
-"Your new track holds attention with its balanced energy and structure.",
-"We loved the subtle details and expressive tone of your latest release.",
-"Your new song feels deliberate, dynamic, and well-executed.",
-"We were immediately drawn into the atmosphere of your new track.",
-"Your latest release flows effortlessly while maintaining impact.",
-"We appreciated the confident delivery and polished sound of your new song.",
-"Your new track stands out for its smooth progression and emotional weight.",
-"We found your latest release compelling and thoughtfully produced.",
-"Your new song delivers a refined and engaging listening experience.",
-"We were immediately drawn to your new track — it feels confident, expressive, and carefully shaped.",
-"Your latest release stood out for its strong sense of atmosphere and musical direction.",
-"We enjoyed how naturally your new track develops, with each section flowing effortlessly.",
-"Your new song caught our attention with its clarity, balance, and polished sound.",
-"We were impressed by the emotional tone and smooth progression of your latest release.",
-"Your new track showcases thoughtful production and a clear artistic vision.",
-"We loved the way your latest release blends momentum with emotional depth.",
-"Your new song feels immersive and well-paced from beginning to end.",
-"We were drawn to the cohesion and intentional flow throughout your new track.",
-"Your latest release carries a confident energy that feels refined and purposeful.",
+(function(){
 
-"We really appreciated the detail and restraint present in your new track.",
-"Your new song stands out for its seamless transitions and controlled dynamics.",
-"We enjoyed the balance of atmosphere and structure in your latest release.",
-"Your new track feels polished while still maintaining an organic edge.",
-"We were captivated by the mood and progression of your latest song.",
-"Your new release reflects a strong sense of focus and creative direction.",
-"We found your new track engaging from the very first listen.",
-"Your latest song delivers a cohesive and immersive listening experience.",
-"We were drawn to the subtle dynamics and pacing of your new release.",
-"Your new track feels expressive, deliberate, and well-executed.",
+  // ---------------------------------------------------------------
+  // 1. EDIT THIS LIST: add all your magazine page filenames here.
+  //    Since your jpgs live in a folder named "images" on GitHub,
+  //    right next to this html file, "images/yourfile.jpg" is all
+  //    you need. The more you add, the more variety each tile
+  //    cycles through.
+  // ---------------------------------------------------------------
+  const pages = [
+    "images/page-01.jpg",
+    "images/page-02.jpg",
+    "images/page-03.jpg",
+    "images/page-04.jpg",
+    "images/page-05.jpg",
+    "images/page-06.jpg",
+    "images/page-07.jpg",
+    "images/page-08.jpg",
+    "images/page-09.jpg",
+    "images/page-10.jpg",
+    "images/page-11.jpg",
+    "images/page-12.jpg"
+  ];
 
-"We loved the sense of movement and continuity in your latest release.",
-"Your new song carries a compelling presence that holds attention throughout.",
-"We appreciated how your new track unfolds with clarity and intention.",
-"Your latest release demonstrates confidence in both composition and production.",
-"We were impressed by the smooth flow and tonal consistency of your new song.",
-"Your new track stood out to us for its refined tone and balanced energy.",
-"We enjoyed how your latest release builds naturally and resolves with purpose.",
-"Your new song feels dynamic yet controlled, with a strong sense of cohesion.",
-"We were struck by the emotional consistency across your latest track.",
-"Your new release maintains a steady and engaging presence throughout.",
+  const TILE_COUNT = 10;        // how many letter-sized boxes to show (5 per row on desktop, 3 per row on mobile — rows wrap automatically)
+  const BASE_INTERVAL = 3800;   // baseline ms between changes (same pace as before)
+  const JITTER = 1600;          // +/- randomness so tiles don't sync up
 
-"We loved how your new track balances atmosphere with forward momentum.",
-"Your latest song feels intentional, polished, and thoughtfully arranged.",
-"We were drawn to the natural pacing and structure of your new release.",
-"Your new track delivers a confident and immersive listening experience.",
-"We appreciated the clean production and smooth transitions in your latest song.",
-"Your new release stands out for its clarity and artistic focus.",
-"We found your new track engaging and emotionally resonant.",
-"Your latest song showcases a strong sense of flow and musical intent.",
-"We were impressed by how cohesive and refined your new release feels.",
-"Your new track holds attention with its balance of energy and restraint.",
+  const grid = document.getElementById('magGrid');
+  if (pages.length === 0) return;
 
-"We loved the subtle details and expressive tone of your latest release.",
-"Your new song feels deliberate, dynamic, and well-structured.",
-"We were immediately pulled into the atmosphere of your new track.",
-"Your latest release flows effortlessly while maintaining impact.",
-"We appreciated the confident delivery and polished sound of your new song.",
-"Your new track stood out for its smooth progression and emotional weight.",
-"We found your latest release compelling and carefully produced.",
-"Your new song delivers a refined and engaging listening experience.",
-"We were drawn to the controlled energy and cohesive arrangement of your new track.",
-"Your latest release reflects a clear artistic identity and strong execution."
+  for (let t = 0; t < TILE_COUNT; t++){
+    const tile = document.createElement('div');
+    tile.className = 'mag-tile';
 
-];
+    const imgA = document.createElement('img');
+    const imgB = document.createElement('img');
 
-function generateText() {
-    const compliment = compliments[Math.floor(Math.random() * compliments.length)];
+    // stagger the starting image so every tile shows something different
+    let index = t % pages.length;
+    imgA.src = pages[index];
+    imgA.alt = 'Magazine page';
+    imgA.classList.add('mag-visible');
 
-    const text = `Hi {ARTIST},
+    imgB.alt = 'Magazine page';
 
-George here, from Indiefferential!
+    tile.appendChild(imgA);
+    tile.appendChild(imgB);
+    grid.appendChild(tile);
 
-Our team is listening to several releases every day. We chose {TITLE} to be featured on our printed magazine with worldwide shipping and more than 4K mailing list subscribers.
+    let showingA = true;
 
-This is not another promo post that will get lost in the feed of social media. What we offer is the experience of having your release in a printed magazine that will find its way to the bookcase of a real music fan!
+    function tick(){
+      index = (index + 1) % pages.length;
+      const nextImg = showingA ? imgB : imgA;
+      const currImg = showingA ? imgA : imgB;
 
-${compliment}
+      nextImg.src = pages[index];
+      // wait a beat for the image to be ready, then crossfade
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          nextImg.classList.add('mag-visible');
+          currImg.classList.remove('mag-visible');
+        });
+      });
 
-But why is Indiefferential any different from any other media outlet?
+      showingA = !showingA;
+      const nextDelay = BASE_INTERVAL + (Math.random() * JITTER * 2 - JITTER);
+      setTimeout(tick, nextDelay);
+    }
 
-Our editorial team consists of professional musicians and writers with at least one master’s degree. See why we're different at: https://indiefferential.com/who-we-are/
+    // stagger each tile's first change so they don't all fire together
+    const initialDelay = BASE_INTERVAL + (t * 400) + (Math.random() * JITTER);
+    setTimeout(tick, initialDelay);
+  }
 
-• Our digital magazine is sent weekly to our mailing list subscribers (more than 4K musicians and industry officials)
-• The printed magazine is available on our website with worldwide shipping
-• Main issue with QR code links to every digital issue of the month also at: Amazon, Barnes & Noble, Books-A-Million, Bookshop.org, Target.com, Walmart.com (6–8 weeks after approval the issue will gradually appear on every store above)
-• We run monthly campaigns on Billboards across Europe and the U.S. promoting our latest issue with photos of your features
-• The online magazine is available for free to read on our website
-
-👉🏻Your release in our printed magazine and on our website  
-👉🏻Your music playing 24/7 to our Online Rotation Show for 6 months  
-👉🏻Social media posts and your music in our Spotify playlist for 1 month
-
-We have been featuring independent artists since 2021 in print and since 2012 on our website. Some of the most influential indie artists & pros worked with Indiefferential to promote their music.
-
-Indiefferential has been highlighted in Oren Sharon’s article, Best Music Blogs to Get Your Music Featured in 2025!
-
-See what fellow artists, who trusted us with their promo campaign, have to say about us and what makes us different:
-https://indiefferential.com/who-we-are/
-
-We'd love a feature for our printed issue with you!`;
-
-    const textarea = document.getElementById("output");
-    textarea.value = text;
-    textarea.select();
-    document.execCommand("copy");
-
-    const msg = document.getElementById("copiedMsg");
-    msg.classList.add("show");
-    setTimeout(() => msg.classList.remove("show"), 2000);
-}
+})();
 </script>
 
 </body>
